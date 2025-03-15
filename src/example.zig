@@ -1,8 +1,22 @@
 const lambda = @import("lambda");
 const std = @import("std");
 
+const CustomHandler = struct {
+    fn handle(self: *anyopaque, event: *const lambda.Event) lambda.Result {
+        _ = self;
+        std.debug.print("handler: received event from runtime: {s}\n", .{event.payload});
+        return .{ .success = "here do be my response" };
+    }
+
+    fn handler(self: *CustomHandler) lambda.Handler {
+        return .{
+            .ptr = self,
+            .handlerFn = handle,
+        };
+    }
+};
+
 pub fn main() !void {
-    std.debug.print("example lambda function\n", .{});
-    const result = lambda.add(2, 2);
-    std.debug.print("calling into library, 2 + 2 = {d}\n", .{result});
+    var custom_handler = CustomHandler{};
+    lambda.init_runtime(custom_handler.handler());
 }

@@ -1,13 +1,27 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+pub fn build(b: *std.Build) !void {
+    var target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer _ = gpa.deinit();
+
+    var env_map = try std.process.getEnvMap(allocator);
+    defer env_map.deinit();
+    if (env_map.get("LAMBDA_TARGET_AARCH64") != null) {
+        std.debug.print("building for linux aarch64 target\n", .{});
+        target = b.resolveTargetQuery(.{
+            .cpu_arch = .aarch64,
+            .os_tag = .linux,
+        });
+    } else {
+        std.debug.print("building for native architecture\n", .{});
+    }
+
     // ------------------------------------------------------------------------
-    // Create `liblambd.a`, both as a static library & header file that can be
-    // used from C, and as a Zig module that can be consumed by the Zig package
-    // manager.
+    // Create our library module that contains our runtime.
     // ------------------------------------------------------------------------
 
     const lib_lambda_mod = b.createModule(.{
@@ -15,16 +29,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-
-    const lib_lambda = b.addLibrary(.{
-        .linkage = .static,
-        .name = "lambda",
-        .root_module = lib_lambda_mod,
-    });
-
-    b.installArtifact(lib_lambda);
-    // TODO: would be nice to generate a C header file here! but that behavior
-    // is currently broken: https://github.com/ziglang/zig/issues/18497
 
     // ------------------------------------------------------------------------
     // Create an example Zig lambda function that uses our library.
