@@ -42,21 +42,17 @@ pub const Handler = struct {
     ) Result,
 };
 
-/// The runtime context that is passed to each user function, allowing them to
-/// manually post success or error responses back to the runtime api.
-pub const RuntimeContext = struct {
+const RuntimeContext = struct {
     runtime_api: []const u8,
 
     const Self = @This();
 
-    pub fn init(runtime_api: []const u8) Self {
+    fn init(runtime_api: []const u8) Self {
         return .{
             .runtime_api = runtime_api,
         };
     }
 
-    /// Posts a success response with the given payload back to the runtime api.  Note that it is
-    /// an error to do any further work in your function after calling this method.
     fn post_success_response(
         self: *const Self,
         allocator: std.mem.Allocator,
@@ -66,8 +62,6 @@ pub const RuntimeContext = struct {
         try self.post_response(allocator, request_id, "response", payload);
     }
 
-    /// Posts an error response with the given reason and payload back to the runtime api.  Note
-    /// that it is an error to do any further work in your function after calling this method.
     fn post_error_response(
         self: *const Self,
         allocator: std.mem.Allocator,
